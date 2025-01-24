@@ -11,3 +11,4 @@ enableXsrfProtection = true
 
 [browser]
 gatherUsageStats = false 
+API_KEY = "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"

@@ -1,12 +1,11 @@
 import os
-from dotenv import load_dotenv
 import streamlit as st
 from groq import Groq
 from gtts import gTTS
 import time
 
-# Load environment variables from .env file
-load_dotenv()
+# Load secrets from Streamlit's secrets management
+API_KEY = st.secrets["GROQ"]["API_KEY"]
 
 # Initialize session state for translations
 if 'translations' not in st.session_state:
@@ -20,7 +19,7 @@ def generate_audio_filename(lang_code: str, text: str) -> str:
     timestamp = int(time.time())
     return f"{safe_text}_{lang_code}_{timestamp}.mp3"
 
-def translate_and_speak(sentence: str, api_key: str, num_languages: int = 40, output_dir: str = 'translations'):
+def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str = 'translations'):
     """
     Translate a sentence into multiple languages using Groq API and generate MP3 audio files.
     """
@@ -28,7 +27,7 @@ def translate_and_speak(sentence: str, api_key: str, num_languages: int = 40, ou
     os.makedirs(output_dir, exist_ok=True)
     
     # Initialize Groq client
-    client = Groq(api_key=api_key)
+    client = Groq(api_key=API_KEY)
     
     # Top 40 most spoken languages globally
     LANGUAGES = [
@@ -127,7 +126,7 @@ def main():
     
     st.title("🌍 MultiLingual Translator")
     
-    # Retrieve API Key from environment variable
+    # Retrieve API Key from secrets
     api_key = os.getenv('GROQ_API_KEY', '')
     
     # Sentence Input
