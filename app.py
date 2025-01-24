@@ -1,8 +1,12 @@
 import os
+from dotenv import load_dotenv
 import streamlit as st
 from groq import Groq
 from gtts import gTTS
 import time
+
+# Move page configuration to the top of the script
+st.set_page_config(page_title="MultiLingual Translator", page_icon="🌍")
 
 # Load secrets from Streamlit's secrets management
 API_KEY = st.secrets["GROQ"]["API_KEY"]
@@ -122,12 +126,7 @@ def display_translations(translations):
                         )
 
 def main():
-    st.set_page_config(page_title="MultiLingual Translator", page_icon="🌍")
-    
     st.title("🌍 MultiLingual Translator")
-    
-    # Retrieve API Key from secrets
-    api_key = os.getenv('GROQ_API_KEY', '')
     
     # Sentence Input
     sentence = st.text_area("Enter sentence to translate", height=150)
@@ -137,7 +136,7 @@ def main():
     
     # Translate Button
     if st.button("Translate & Generate Audio"):
-        if not api_key:
+        if not API_KEY:
             st.error("Groq API Key is not set in the environment.")
             return
         
@@ -147,7 +146,7 @@ def main():
         
         # Perform Translation
         with st.spinner('Translating and generating audio...'):
-            st.session_state.translations = translate_and_speak(sentence, api_key, num_languages)
+            st.session_state.translations = translate_and_speak(sentence, num_languages)
     
     # Display translations (will persist across refreshes)
     display_translations(st.session_state.translations)
