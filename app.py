@@ -1,10 +1,16 @@
 import os
 import threading
 import time
+import logging
 from flask import Flask, render_template, request, send_from_directory
 from groq import Groq
 from gtts import gTTS
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -17,68 +23,77 @@ os.makedirs('translations', exist_ok=True)
 # Get Groq API key from environment variable
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
-# Raise error if API key is not set
-if not GROQ_API_KEY:
-    raise ValueError("No GROQ_API_KEY set. Please set it in .env file.")
-
-# # Ensure translations directory exists
-# os.makedirs('translations', exist_ok=True)
-
-# # Groq API key
-# GROQ_API_KEY = "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"
-
 # Language configurations
 LANGUAGES = [
     ('fr', 'French'), ('es', 'Spanish'), ('de', 'German'), ('it', 'Italian'), 
     ('ja', 'Japanese'), ('ko', 'Korean'), ('zh', 'Chinese'), ('ru', 'Russian'), 
     ('ar', 'Arabic'), ('hi', 'Hindi'), ('pt', 'Portuguese'), ('nl', 'Dutch'), 
     ('sv', 'Swedish'), ('pl', 'Polish'), ('tr', 'Turkish'), ('vi', 'Vietnamese'), 
-    ('th', 'Thai'), ('el', 'Greek'), ('he', 'Hebrew'), ('id', 'Indonesian'),
-    ('da', 'Danish'), ('fi', 'Finnish'), ('no', 'Norwegian'), ('ro', 'Romanian'),
-    ('hu', 'Hungarian'), ('cs', 'Czech'), ('sk', 'Slovak'), ('uk', 'Ukrainian'),
-    ('bn', 'Bengali'), ('fa', 'Persian'), ('sr', 'Serbian'), ('hr', 'Croatian'),
-    ('bg', 'Bulgarian'), ('ur', 'Urdu'), ('mr', 'Marathi'), ('ta', 'Tamil')
+    ('th', 'Thai'), ('el', 'Greek'), ('he', 'Hebrew'), ('id', 'Indonesian')
 ]
 
-def cleanup_translations():
+def create_groq_client():
     """
-    Periodically delete all files in the translations directory
+    Create Groq client with error handling and proxy support
     """
-    while True:
-        # Sleep for 1 hour
-        time.sleep(3600)
+    try:
+        # Get optional proxy settings from environment
+        http_proxy = os.getenv('HTTP_PROXY')
+        https_proxy = os.getenv('HTTPS_PROXY')
         
+        # Prepare proxy configuration
+        proxies = {}
+        if http_proxy:
+            proxies['http'] = http_proxy
+        if https_proxy:
+            proxies['https'] = https_proxy
+        
+        # Create client with or without proxies
+        client = Groq(
+            api_key=GROQ_API_KEY,
+            **({"proxies": proxies} if proxies else {})
+        )
+        return client
+    except Exception as e:
+        logger.error(f"Error initializing Groq client: {e}")
+        return None
+
+def cleanup_translations():
+    """Periodically delete all files in the translations directory"""
+    while True:
+        time.sleep(3600)
         try:
-            # Get the translations directory path
-            translations_dir = 'translations'
-            
-            # Iterate and remove all files
-            for filename in os.listdir(translations_dir):
-                file_path = os.path.join(translations_dir, filename)
+            for filename in os.listdir('translations'):
+                file_path = os.path.join('translations', filename)
                 try:
                     if os.path.isfile(file_path):
                         os.unlink(file_path)
                 except Exception as e:
-                    print(f"Failed to delete {file_path}. Reason: {e}")
+                    logger.error(f"Failed to delete {file_path}: {e}")
         except Exception as e:
-            print(f"Cleanup error: {e}")
+            logger.error(f"Cleanup error: {e}")
 
 def translate_and_generate_audio(sentence, client):
+    """Translate sentence and generate audio for multiple languages"""
+    if not client:
+        logger.error("Groq client not initialized")
+        return []
+    
     translations = []
     
     for lang_code, lang_name in LANGUAGES:
         try:
-            # Translate using Groq API
+            # Updated prompt to get only the translated text
             chat_completion = client.chat.completions.create(
                 messages=[
-                    {"role": "system", "content": f"Translate the following English sentence to {lang_name}:"},
-                    {"role": "user", "content": sentence}
+                    {"role": "system", "content": "Translate the following text precisely. Provide ONLY the translation without any additional explanation."},
+                    {"role": "user", "content": f"Translate '{sentence}' to {lang_name}"}
                 ],
                 model="mixtral-8x7b-32768"
             )
             
-            # Extract translated text
-            translation = chat_completion.choices[0].message.content
+            # Extract translated text (trimmed to remove any potential extra context)
+            translation = chat_completion.choices[0].message.content.strip().strip('"')
             
             # Generate text-to-speech MP3
             tts = gTTS(text=translation, lang=lang_code)
@@ -96,7 +111,7 @@ def translate_and_generate_audio(sentence, client):
             })
         
         except Exception as e:
-            print(f"Error processing {lang_name}: {e}")
+            logger.error(f"Error processing {lang_name}: {e}")
     
     return translations
 
@@ -104,32 +119,20 @@ def translate_and_generate_audio(sentence, client):
 def index():
     translations = []
     input_sentence = ''
-    is_loading = False
     
     if request.method == 'POST':
         input_sentence = request.form.get('sentence', '')
         
         if input_sentence:
-            try:
-                is_loading = True
-                # Initialize Groq client with minimal configuration
-                client = Groq()
-                client.api_key = GROQ_API_KEY
-                
-                # Generate translations and audio
-                translations = translate_and_generate_audio(input_sentence, client)
-            except Exception as e:
-                print(f"Error initializing Groq client: {e}")
-                return render_template('index.html', 
-                                    translations=[], 
-                                    input_sentence=input_sentence,
-                                    error="An error occurred while processing your request.",
-                                    is_loading=False)
+            # Create Groq client
+            client = create_groq_client()
+            
+            # Generate translations and audio
+            translations = translate_and_generate_audio(input_sentence, client)
     
     return render_template('index.html', 
-                         translations=translations, 
-                         input_sentence=input_sentence,
-                         is_loading=is_loading)
+                           translations=translations, 
+                           input_sentence=input_sentence)
 
 @app.route('/translations/<filename>')
 def serve_translation(filename):
@@ -141,4 +144,4 @@ if __name__ == '__main__':
     cleanup_thread.start()
     
     # Run the Flask app
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
