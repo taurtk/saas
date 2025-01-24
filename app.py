@@ -104,17 +104,17 @@ def translate_and_generate_audio(sentence, client):
 def index():
     translations = []
     input_sentence = ''
+    is_loading = False
     
     if request.method == 'POST':
         input_sentence = request.form.get('sentence', '')
         
         if input_sentence:
             try:
-                # Initialize Groq client without proxies
-                client = Groq(
-                    api_key=GROQ_API_KEY,
-                    base_url="https://api.groq.com/v1"
-                )
+                is_loading = True
+                # Initialize Groq client with minimal configuration
+                client = Groq()
+                client.api_key = GROQ_API_KEY
                 
                 # Generate translations and audio
                 translations = translate_and_generate_audio(input_sentence, client)
@@ -123,11 +123,13 @@ def index():
                 return render_template('index.html', 
                                     translations=[], 
                                     input_sentence=input_sentence,
-                                    error="An error occurred while processing your request.")
+                                    error="An error occurred while processing your request.",
+                                    is_loading=False)
     
     return render_template('index.html', 
                          translations=translations, 
-                         input_sentence=input_sentence)
+                         input_sentence=input_sentence,
+                         is_loading=is_loading)
 
 @app.route('/translations/<filename>')
 def serve_translation(filename):

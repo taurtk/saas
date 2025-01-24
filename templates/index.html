@@ -26,7 +26,13 @@
             </div>
             
             <div class="p-6">
-                <form method="POST" class="mb-6">
+                {% if error %}
+                    <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                        {{ error }}
+                    </div>
+                {% endif %}
+                
+                <form method="POST" class="mb-6" id="translationForm">
                     <textarea 
                         name="sentence" 
                         rows="4" 
@@ -34,10 +40,20 @@
                         placeholder="Enter text to translate">{{ input_sentence }}</textarea>
                     <button 
                         type="submit" 
-                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+                        id="submitBtn">
                         Translate & Generate Audio
                     </button>
                 </form>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden">
+                    <div class="flex flex-col items-center justify-center space-y-4 p-8">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                        <p class="text-lg text-gray-600">Generating translations and audio files...</p>
+                        <p class="text-sm text-gray-500">This may take a few moments</p>
+                    </div>
+                </div>
 
                 {% if translations %}
                     <div class="grid md:grid-cols-2 gap-4">
@@ -62,14 +78,27 @@
                         {% endfor %}
                     </div>
                 {% endif %}
-
-                {% if error %}
-                    <div class="error-message">
-                        {{ error }}
-                    </div>
-                {% endif %}
             </div>
         </div>
     </div>
+
+    <!-- Add this script at the bottom of the body -->
+    <script>
+    document.getElementById('translationForm').addEventListener('submit', function(e) {
+        // Show loading state
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').classList.add('opacity-50');
+        document.getElementById('submitBtn').innerText = 'Processing...';
+    });
+
+    // If there was an error or after loading completes, make sure loading state is hidden
+    {% if error or translations %}
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').classList.remove('opacity-50');
+        document.getElementById('submitBtn').innerText = 'Translate & Generate Audio';
+    {% endif %}
+    </script>
 </body>
 </html>
