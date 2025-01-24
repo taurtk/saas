@@ -9,7 +9,7 @@ import time
 st.set_page_config(page_title="MultiLingual Translator", page_icon="🌍")
 
 # Load secrets from Streamlit's secrets management
-API_KEY = "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"
+API_KEY = st.secrets["GROQ"]["API_KEY"]
 
 # Initialize session state for translations
 if 'translations' not in st.session_state:
@@ -27,13 +27,14 @@ def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str 
     """
     Translate a sentence into multiple languages using Groq API and generate MP3 audio files.
     """
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     # Initialize Groq client
-    # client = Groq(api_key="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")
-    # Remove any proxy-related arguments
-    client = Groq(api_key=API_KEY)
+    try:
+        client = Groq(api_key=API_KEY)
+    except Exception as e:
+        st.error(f"Failed to initialize Groq client: {e}")
+        return []
     
     # Top 40 most spoken languages globally
     LANGUAGES = [

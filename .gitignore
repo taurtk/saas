@@ -42,7 +42,7 @@ ENV/
 .DS_Store
 
 # Streamlit
-.streamlit/secrets.toml
+# .streamlit/secrets.toml
 
 # Audio files
 *.mp3
