@@ -23,6 +23,11 @@ os.makedirs('translations', exist_ok=True)
 # Get Groq API key from environment variable
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
+# Validate API key at startup
+if not GROQ_API_KEY:
+    logger.error("GROQ_API_KEY environment variable is not set")
+    raise ValueError("GROQ_API_KEY environment variable must be set")
+
 # Language configurations
 LANGUAGES = [
     ('fr', 'French'), ('es', 'Spanish'), ('de', 'German'), ('it', 'Italian'), 
@@ -33,29 +38,13 @@ LANGUAGES = [
 ]
 
 def create_groq_client():
-    """
-    Create Groq client with error handling and proxy support
-    """
+    """Create Groq client with error handling"""
     try:
-        # Get optional proxy settings from environment
-        http_proxy = os.getenv('HTTP_PROXY')
-        https_proxy = os.getenv('HTTPS_PROXY')
-        
-        # Prepare proxy configuration
-        proxies = {}
-        if http_proxy:
-            proxies['http'] = http_proxy
-        if https_proxy:
-            proxies['https'] = https_proxy
-        
-        # Create client with or without proxies
-        client = Groq(
-            api_key=GROQ_API_KEY,
-            **({"proxies": proxies} if proxies else {})
-        )
+        client = Groq()
+        client.api_key = GROQ_API_KEY
         return client
     except Exception as e:
-        logger.error(f"Error initializing Groq client: {e}")
+        logger.error(f"Error creating Groq client: {e}")
         return None
 
 def cleanup_translations():
@@ -119,20 +108,46 @@ def translate_and_generate_audio(sentence, client):
 def index():
     translations = []
     input_sentence = ''
+    is_loading = False
     
     if request.method == 'POST':
         input_sentence = request.form.get('sentence', '')
         
         if input_sentence:
-            # Create Groq client
-            client = create_groq_client()
-            
-            # Generate translations and audio
-            translations = translate_and_generate_audio(input_sentence, client)
+            try:
+                is_loading = True
+                # Create Groq client
+                client = create_groq_client()
+                
+                if not client:
+                    return render_template('index.html',
+                                        translations=[],
+                                        input_sentence=input_sentence,
+                                        error="Failed to initialize translation service. Please try again later.",
+                                        is_loading=False)
+                
+                # Generate translations and audio
+                translations = translate_and_generate_audio(input_sentence, client)
+                
+                if not translations:
+                    return render_template('index.html',
+                                        translations=[],
+                                        input_sentence=input_sentence,
+                                        error="No translations were generated. Please try again.",
+                                        is_loading=False)
+                    
+            except Exception as e:
+                logger.error(f"Translation error: {e}")
+                return render_template('index.html',
+                                    translations=[],
+                                    input_sentence=input_sentence,
+                                    error="An error occurred while processing your request.",
+                                    is_loading=False)
     
-    return render_template('index.html', 
-                           translations=translations, 
-                           input_sentence=input_sentence)
+    return render_template('index.html',
+                         translations=translations,
+                         input_sentence=input_sentence,
+                         is_loading=is_loading)
 
 @app.route('/translations/<filename>')
 def serve_translation(filename):
