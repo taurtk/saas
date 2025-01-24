@@ -9,7 +9,7 @@ import time
 st.set_page_config(page_title="MultiLingual Translator", page_icon="🌍")
 
 # Load secrets from Streamlit's secrets management
-API_KEY = st.secrets["GROQ"]["API_KEY"]
+API_KEY = st.secrets["GROQ_API_KEY"]
 
 # Initialize session state for translations
 if 'translations' not in st.session_state:
