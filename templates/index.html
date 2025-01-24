@@ -2,103 +2,91 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Language Translation SaaS</title>
+    <title>MultiLingual Translator</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #f6f8f9 0%, #e5ebee 100%);
-        }
-        .translation-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .translation-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-            <div class="p-6 bg-blue-500 text-white">
-                <h1 class="text-3xl font-bold text-center">Multilingual Translation Hub</h1>
-            </div>
-            
-            <div class="p-6">
-                {% if error %}
-                    <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                        {{ error }}
-                    </div>
-                {% endif %}
-                
-                <form method="POST" class="mb-6" id="translationForm">
-                    <textarea 
-                        name="sentence" 
-                        rows="4" 
-                        class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:border-blue-500" 
-                        placeholder="Enter text to translate">{{ input_sentence }}</textarea>
-                    <button 
-                        type="submit" 
-                        class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
-                        id="submitBtn">
-                        Translate & Generate Audio
-                    </button>
-                </form>
-
-                <!-- Loading State -->
-                <div id="loadingState" class="hidden">
-                    <div class="flex flex-col items-center justify-center space-y-4 p-8">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                        <p class="text-lg text-gray-600">Generating translations and audio files...</p>
-                        <p class="text-sm text-gray-500">This may take a few moments</p>
-                    </div>
-                </div>
-
-                {% if translations %}
-                    <div class="grid md:grid-cols-2 gap-4">
-                        {% for translation in translations %}
-                            <div class="translation-card bg-gray-50 border rounded-lg p-4 shadow-sm hover:shadow-md">
-                                <h3 class="text-lg font-semibold text-blue-600">
-                                    {{ translation.language_name }} ({{ translation.language_code }})
-                                </h3>
-                                <p class="text-gray-700 mt-2 mb-3">{{ translation.translation }}</p>
-                                <div class="flex items-center space-x-3">
-                                    <audio controls class="flex-grow">
-                                        <source src="{{ url_for('serve_translation', filename=translation.audio_file) }}" type="audio/mpeg">
-                                        Your browser does not support the audio element.
-                                    </audio>
-                                    <a href="{{ url_for('serve_translation', filename=translation.audio_file) }}" download>
-                                        <button class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition duration-300">
-                                            Download
-                                        </button>
-                                    </a>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">MultiLingual Translator</h1>
+        
+        <div class="mb-4">
+            <textarea id="sentence" rows="4" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="Enter sentence to translate..."></textarea>
+        </div>
+        
+        <button id="translateBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-300">
+            <span id="btnText">Translate & Generate Audio</span>
+            <span id="loadingIcon" class="hidden">
+                <!-- Spinner SVG -->
+                <svg class="animate-spin h-5 w-5 mx-auto" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </span>
+        </button>
+        
+        <div id="translations" class="mt-6 space-y-4 max-h-96 overflow-y-auto">
+            <!-- Translations will be dynamically inserted here -->
         </div>
     </div>
 
-    <!-- Add this script at the bottom of the body -->
     <script>
-    document.getElementById('translationForm').addEventListener('submit', function(e) {
-        // Show loading state
-        document.getElementById('loadingState').classList.remove('hidden');
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('submitBtn').classList.add('opacity-50');
-        document.getElementById('submitBtn').innerText = 'Processing...';
-    });
+        document.getElementById('translateBtn').addEventListener('click', function() {
+            const sentence = document.getElementById('sentence').value.trim();
+            const btnText = document.getElementById('btnText');
+            const loadingIcon = document.getElementById('loadingIcon');
+            const translationsDiv = document.getElementById('translations');
 
-    // If there was an error or after loading completes, make sure loading state is hidden
-    {% if error or translations %}
-        document.getElementById('loadingState').classList.add('hidden');
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtn').classList.remove('opacity-50');
-        document.getElementById('submitBtn').innerText = 'Translate & Generate Audio';
-    {% endif %}
+            if (!sentence) {
+                translationsDiv.innerHTML = `
+                    <div class="text-red-500">Please enter a sentence to translate</div>
+                `;
+                return;
+            }
+
+            // Show loading state
+            btnText.classList.add('hidden');
+            loadingIcon.classList.remove('hidden');
+            translationsDiv.innerHTML = '<div class="text-gray-600">Generating translations...</div>';
+
+            axios.post('/translate', { sentence: sentence })
+                .then(response => {
+                    translationsDiv.innerHTML = '';
+                    response.data.forEach(translation => {
+                        const translationCard = `
+                            <div class="bg-gray-50 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-lg text-gray-800">${translation.language_name}</h3>
+                                <p class="text-gray-600 mb-2">${translation.translation}</p>
+                                <div class="flex flex-col space-y-2">
+                                    <audio controls class="w-full">
+                                        <source src="${translation.audio_file}" type="audio/mpeg">
+                                        Your browser does not support audio.
+                                    </audio>
+                                    <a href="${translation.audio_file}" 
+                                       download 
+                                       class="text-center bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg transition duration-300">
+                                        Download Audio
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                        translationsDiv.innerHTML += translationCard;
+                    });
+                })
+                .catch(error => {
+                    translationsDiv.innerHTML = `
+                        <div class="text-red-500 p-4 bg-red-50 rounded-lg">
+                            Error: ${error.response?.data?.error || error.message || 'Failed to translate'}
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    // Hide loading state
+                    btnText.classList.remove('hidden');
+                    loadingIcon.classList.add('hidden');
+                });
+        });
     </script>
 </body>
 </html>
