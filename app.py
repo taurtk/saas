@@ -33,7 +33,7 @@ def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str 
     # Initialize Groq client
     # client = Groq(api_key="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")
     # Remove any proxy-related arguments
-    client = Groq(api_key="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")
+    client = Groq(api_key=API_KEY)
     
     # Top 40 most spoken languages globally
     LANGUAGES = [
