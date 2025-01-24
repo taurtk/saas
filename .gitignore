@@ -41,9 +41,11 @@ ENV/
 *.swo
 .DS_Store
 
-# Flask
-instance/
-.webassets-cache
+# Streamlit
+.streamlit/secrets.toml
+
+# Audio files
+*.mp3
 
 # Logs
 *.log 
