@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 import streamlit as st
 from groq import Groq
 from gtts import gTTS
@@ -31,7 +30,7 @@ def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str 
     
     # Initialize Groq client
     try:
-        client = Groq(api_key=API_KEY)
+        client = Groq(api_key=API_KEY)  # Ensure this is the correct initialization
     except Exception as e:
         st.error(f"Failed to initialize Groq client: {e}")
         return []
