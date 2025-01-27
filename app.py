@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from groq import Groq
+from langchain_groq import GroqChat  # Import the GroqChat from langchain_groq
 from gtts import gTTS
 import time
 
@@ -8,8 +8,7 @@ import time
 st.set_page_config(page_title="MultiLingual Translator", page_icon="🌍")
 
 # Load secrets from Streamlit's secrets management
-API_KEY ="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"
-
+API_KEY = "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"
 # Initialize session state for translations
 if 'translations' not in st.session_state:
     st.session_state.translations = []
@@ -24,13 +23,13 @@ def generate_audio_filename(lang_code: str, text: str) -> str:
 
 def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str = 'translations'):
     """
-    Translate a sentence into multiple languages using Groq API and generate MP3 audio files.
+    Translate a sentence into multiple languages using LangChain Groq API and generate MP3 audio files.
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize Groq client without any additional parameters
+    # Initialize LangChain Groq client
     try:
-        client = Groq(api_key=API_KEY)  # Ensure this is the correct initialization
+        client = GroqChat(api_key=API_KEY)  # Initialize with the API key
     except Exception as e:
         st.error(f"Failed to initialize Groq client: {e}")
         return []
@@ -57,7 +56,7 @@ def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str 
         try:
             status_text.text(f"Translating to {lang_name}...")
             
-            # Use Groq API to translate
+            # Use LangChain Groq API to translate
             chat_completion = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": "Translate the following text precisely. Provide ONLY the translation without any additional explanation."},
