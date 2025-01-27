@@ -28,7 +28,7 @@ def translate_and_speak(sentence: str, num_languages: int = 40, output_dir: str 
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # Initialize Groq client
+    # Initialize Groq client without any additional parameters
     try:
         client = Groq(api_key=API_KEY)  # Ensure this is the correct initialization
     except Exception as e:
